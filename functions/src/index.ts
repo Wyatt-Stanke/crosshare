@@ -29,7 +29,7 @@ import { queueEmails } from './queueEmails.js';
 
 export const ratings = functions
   // eslint-disable-next-line import/namespace
-  .runWith({ timeoutSeconds: 540, memory: '512MB' })
+  .runWith({ timeoutSeconds: 540, memory: '1GB' })
   .pubsub.schedule('every day 00:05')
   .timeZone('UTC')
   .onRun(async (_context) => {

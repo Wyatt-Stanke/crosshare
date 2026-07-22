@@ -352,7 +352,7 @@ export async function doGlicko() {
 
   let queryEndTimestamp: FBTimestamp | null = null;
   for (let roundNumber = startRound; roundNumber < endRound; roundNumber += 1) {
-    if (new Date().getTime() - runBegin > 1000 * 60 * 2) {
+    if (new Date().getTime() - runBegin > 1000 * 60 * 1) {
       console.log('run has taken too long, breaking out');
       break;
     }
