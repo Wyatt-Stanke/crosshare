@@ -1115,15 +1115,15 @@ export const Puzzle = ({
               ) : (
                 ''
               )}
+              <TopBarDropDownLinkSimpleA
+                href={`/api/pdf/${puzzle.id}${isSlate ? '?slate=1' : ''}`}
+                icon={<FaPrint />}
+                text={t`Print Puzzle`}
+              />
               {isSlate ? (
                 ''
               ) : (
                 <>
-                  <TopBarDropDownLinkSimpleA
-                    href={'/api/pdf/' + puzzle.id}
-                    icon={<FaPrint />}
-                    text={t`Print Puzzle`}
-                  />
                   {puzzle.hBars.length || puzzle.vBars.length ? (
                     ''
                   ) : (

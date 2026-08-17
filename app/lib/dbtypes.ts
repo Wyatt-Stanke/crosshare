@@ -242,6 +242,7 @@ const DBPuzzleOptionalV = t.partial({
   rfm: t.boolean,
   /** pack id */
   pk: t.string,
+  pdf_override: t.string,
 });
 
 export const DBPuzzleV = t.intersection([

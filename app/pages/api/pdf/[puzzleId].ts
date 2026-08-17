@@ -226,7 +226,8 @@ function layoutPDFGrid(
 function layoutPDFInfo(
   doc: jsPDF,
   puzzle: PuzzleT,
-  constructorUsername: string | null
+  constructorUsername: string | null,
+  isSlate: boolean
 ): number {
   doc.setFont('helvetica');
   doc.setFontSize(18);
@@ -241,7 +242,11 @@ function layoutPDFInfo(
 
   doc.setFontSize(9);
 
-  const publishedByLine = createPublishedByLine(puzzle, constructorUsername);
+  const publishedByLine = createPublishedByLine(
+    puzzle,
+    constructorUsername,
+    isSlate
+  );
   doc.text(publishedByLine, 50, 50 + 20 + extraLines * 21);
   return extraLines * 21;
 }
@@ -254,14 +259,23 @@ async function getConstructor(authorId: string): Promise<string | null> {
 
 function createPublishedByLine(
   puzzle: PuzzleT,
-  constructorUsername: string | null
+  constructorUsername: string | null,
+  isSlate: boolean
 ) {
   let authorText;
   const urlText = createAttributionLink(puzzle, constructorUsername);
   if (puzzle.guestConstructor) {
-    authorText = `By ${puzzle.guestConstructor} - Published by ${puzzle.authorName}${urlText}`;
+    if (isSlate) {
+      authorText = `By ${puzzle.guestConstructor} - Powered by crosshare.org`;
+    } else {
+      authorText = `By ${puzzle.guestConstructor} - Published by ${puzzle.authorName}${urlText}`;
+    }
   } else {
-    authorText = `By ${puzzle.authorName} - Published${urlText}`;
+    if (isSlate) {
+      authorText = `By ${puzzle.authorName} - Powered by crosshare.org`;
+    } else {
+      authorText = `By ${puzzle.authorName} - Published${urlText}`;
+    }
   }
   return authorText;
 }
@@ -285,7 +299,8 @@ function createAttributionLink(
 
 function getPdf(
   puzzle: PuzzleT,
-  constructorUsername: string | null
+  constructorUsername: string | null,
+  isSlate: boolean
 ): ArrayBuffer {
   console.log('Generating pdf for ' + puzzle.title);
 
@@ -309,14 +324,19 @@ function getPdf(
     creator: 'crosshare.org',
     author: puzzle.authorName,
   });
-  const extraPaddingTop = layoutPDFInfo(pdf, puzzle, constructorUsername);
+  const extraPaddingTop = layoutPDFInfo(
+    pdf,
+    puzzle,
+    constructorUsername,
+    isSlate
+  );
   const squareSize = layoutPDFGrid(pdf, 50, 80 + extraPaddingTop, puzzle, grid);
   layoutPDFClues(pdf, puzzle, grid, squareSize, extraPaddingTop);
   return pdf.output('arraybuffer');
 }
 
 export default async function pdf(req: NextApiRequest, res: NextApiResponse) {
-  const { puzzleId } = req.query;
+  const { puzzleId, slate } = req.query;
   if (Array.isArray(puzzleId) || !puzzleId) {
     res.status(404).json({ statusCode: 404, message: 'bad puzzle params' });
     return;
@@ -324,6 +344,11 @@ export default async function pdf(req: NextApiRequest, res: NextApiResponse) {
   const puzzle = await getPuzzle(puzzleId);
   if (!puzzle) {
     res.status(404).json({ statusCode: 404, message: 'failed to get puzzle' });
+    return;
+  }
+  const isSlate = slate != undefined && slate.length != 0;
+  if (isSlate && puzzle.pdf_override) {
+    res.redirect(301, puzzle.pdf_override);
     return;
   }
   const fromDB = puzzleFromDB(puzzle, puzzleId);
@@ -342,5 +367,5 @@ export default async function pdf(req: NextApiRequest, res: NextApiResponse) {
     'inline; filename="' + puzzle.t.replace(/[^\w ]/g, '') + '.pdf"'
   );
   res.writeHead(200, { 'Content-Type': 'application/pdf' });
-  res.end(Buffer.from(getPdf(fromDB, constructorUsername)));
+  res.end(Buffer.from(getPdf(fromDB, constructorUsername, isSlate)));
 }
