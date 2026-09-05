@@ -1458,3 +1458,84 @@ test('should update indexes when a private until puzzle is marked private', asyn
     overrideToFirestore(null);
   });
 });
+
+test('should update puzzle title on existing notifications when title changes', async () => {
+  await testEnv.clearFirestore();
+
+  await testEnv.withSecurityRulesDisabled(async (adminApp) => {
+    const firestore = adminApp.firestore();
+    overrideFirestore(firestore as unknown as FirebaseFirestore.Firestore);
+    overrideToFirestore(convertTimestamps);
+
+    const puzzleWithComments = {
+      ...basePuzzle,
+      cs: [getComment({ a: 'dummy-author-id' })],
+    };
+    const puzzleWithComments2 = {
+      ...basePuzzle,
+      cs: [getComment({ a: 'dummy-author-id', i: 'randomCommentId' })],
+    };
+
+    await firestore
+      .collection('c')
+      .withConverter(converter)
+      .doc(toDeleteId)
+      .set(puzzleWithComments);
+    await firestore
+      .collection('c')
+      .withConverter(converter)
+      .doc(toKeepId)
+      .set(puzzleWithComments2);
+
+    await handlePuzzleUpdate(basePuzzle, puzzleWithComments, toDeleteId);
+    await handlePuzzleUpdate(basePuzzle, puzzleWithComments2, toKeepId);
+
+    await handlePuzzleUpdate(
+      puzzleWithComments,
+      { ...puzzleWithComments, t: 'A new title' },
+      toDeleteId
+    );
+
+    expect(
+      await firestore
+        .collection('n')
+        .get()
+        .then((r) =>
+          r.docs
+            .map((d) => d.data())
+            .map((d) => {
+              delete d.t;
+              return d;
+            })
+            .sort((a, b) => a.id.localeCompare(b.id))
+        )
+    ).toMatchInlineSnapshot(`
+      [
+        {
+          "c": "LwgoVx0BAskM4wVJyoLj",
+          "cn": "Mike D",
+          "e": false,
+          "id": "fSEwJorvqOMK5UhNMHa4mu48izl1-comment-LwgoVx0BAskM4wVJyoLj",
+          "k": "comment",
+          "p": "puzzletodelete",
+          "pn": "A new title",
+          "r": false,
+          "u": "fSEwJorvqOMK5UhNMHa4mu48izl1",
+        },
+        {
+          "c": "randomCommentId",
+          "cn": "Mike D",
+          "e": false,
+          "id": "fSEwJorvqOMK5UhNMHa4mu48izl1-comment-randomCommentId",
+          "k": "comment",
+          "p": "puzzletokeep",
+          "pn": "Raises, as young",
+          "r": false,
+          "u": "fSEwJorvqOMK5UhNMHa4mu48izl1",
+        },
+      ]
+    `);
+    overrideFirestore(null);
+    overrideToFirestore(null);
+  });
+});
