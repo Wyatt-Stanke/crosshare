@@ -63,7 +63,7 @@ export default async function constructorFeed(
       date: new Date(p.isPrivateUntil ?? p.publishTime),
       enclosure: {
         url: `https://crosshare.org/api/puz/${p.id}`,
-        type: "application/x-crossword"
+        type: 'application/x-crossword',
       },
       description: p.blogPost
         ? toHtml(
