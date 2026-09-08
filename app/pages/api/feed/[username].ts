@@ -61,6 +61,10 @@ export default async function constructorFeed(
       id: link,
       link: link,
       date: new Date(p.isPrivateUntil ?? p.publishTime),
+      enclosure: {
+        url: `https://crosshare.org/api/puz/${p.id}`,
+        type: "application/x-crossword"
+      },
       description: p.blogPost
         ? toHtml(
             markdownToHast({
