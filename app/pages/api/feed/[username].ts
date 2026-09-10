@@ -5,6 +5,7 @@ import { validate } from '../../../lib/constructorPage.js';
 import { getCollection } from '../../../lib/firebaseAdminWrapper.js';
 import { markdownToHast } from '../../../lib/markdown/markdown.js';
 import { paginatedPuzzles } from '../../../lib/paginatedPuzzles.js';
+import { getStorageUrl } from '../../../lib/serverOnly.js';
 import { slugify } from '../../../lib/utils.js';
 
 export default async function constructorFeed(
@@ -54,13 +55,73 @@ export default async function constructorFeed(
     },
   });
 
+  const avatar = await getStorageUrl(`users/${cp.u}/profile.jpg`);
+
+  feed.addExtension({
+    name: 'byline:contributors',
+    objects: {
+      'byline:person': {
+        _attributes: {
+          id: cp.u,
+        },
+        'byline:name': {
+          _text: cp.n,
+        },
+        'byline:context': {
+          _text: cp.b,
+        },
+        'byline:url': {
+          _text: `https://crosshare.org/${cp.i}`,
+        },
+        ...(avatar && {
+          'byline:avatar': {
+            _text: avatar,
+          },
+        }),
+      },
+    },
+  });
+
   puzzles.forEach((p) => {
     const link = `https://crosshare.org/crosswords/${p.id}/${slugify(p.title)}`;
+    const bylineAuthor = p.guestConstructor
+      ? [
+          {
+            name: 'byline:author',
+            objects: {
+              'byline:person': {
+                _attributes: {
+                  id: `guest-${p.id}`,
+                },
+                'byline:name': {
+                  _text: p.guestConstructor,
+                },
+              },
+            },
+          },
+          {
+            name: 'byline:role',
+            objects: {
+              _text: 'guest',
+            },
+          },
+        ]
+      : [
+          {
+            name: 'byline:author',
+            objects: {
+              _attributes: {
+                ref: p.authorId,
+              },
+            },
+          },
+        ];
     feed.addItem({
       title: p.title,
       id: link,
       link: link,
       date: new Date(p.isPrivateUntil ?? p.publishTime),
+      extensions: bylineAuthor,
       enclosure: {
         url: `https://crosshare.org/api/puz/${p.id}`,
         type: 'application/x-crossword',
@@ -75,8 +136,12 @@ export default async function constructorFeed(
     });
   });
 
+  const xml = feed
+    .rss2()
+    .replace('<rss ', `<rss xmlns:byline="https://bylinespec.org/1.0" `);
+
   res.setHeader('Cache-Control', 'public, max-age=1800, s-maxage=3600');
   res.statusCode = 200;
   res.setHeader('Content-Type', 'text/xml; charset=utf-8');
-  res.end(feed.rss2());
+  res.end(xml);
 }
